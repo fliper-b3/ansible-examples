@@ -1,0 +1,116 @@
+- name: Install ElasticSearch repository
+  copy:
+    src: "etc/yum.repos.d/elasticsearch.repo"
+    dest: "/etc/yum.repos.d/elasticsearch.repo"
+- block: # Update block
+  - name: Disable shard allocation
+    uri:
+      url: "https://elastic.eoadm.com/_cluster/settings"
+      method: PUT
+      body_format: json
+      body: |
+        {
+          "transient": {
+            "cluster.routing.allocation.enable": "none"
+          }
+        }
+      user: "{{ es.user }}"
+      password: "{{ es.password }}"
+    ignore_errors: True
+#  Этот блок падает с ошибкой, всегда, без него апдейт идет успешно, можно удалить?
+#  - name: Stop non-essential indexing and perform a synced flush
+#    uri:
+#      url: "https://elastic.eoadm.com/_flush/synced"
+#      method: POST
+#      user: "{{ es.user }}"
+#      password: "{{ es.password }}"
+#      status_code: "200,409"
+#    ignore_errors: True
+  - name: Stop ElasticSearch and Kibana
+    service:
+      name: "{{ item }}"
+      state: stopped
+    with_items:
+      - "elasticsearch"
+      - "kibana"
+  when: update is defined and update
+- name: Install ElasticSearch package
+  package:
+    name: "{{ item }}"
+    state: "{{ version }}"
+  with_items:
+    - "java-1.8.0-openjdk"
+    - "elasticsearch"
+    - "kibana"
+- name: Reload systemd
+  command: "systemctl daemon-reload"
+- name: Get ElasticSearch version
+  command: "rpm -q --queryformat '%{RPMTAG_VERSION}' elasticsearch"
+  register: esversion
+  args:
+    warn: no
+- name: ElasticSearch config
+  copy:
+    src: "etc/elasticsearch/{{ item }}"
+    dest: "/etc/elasticsearch/{{ item }}"
+  with_items:
+    - "elasticsearch.yml"
+    - "jvm.options"
+- block: # ElastiSearch Plugins
+  - name: Remove ElasticSearch plugins
+    shell: "/usr/share/elasticsearch/bin/elasticsearch-plugin remove -s {{ item }}"
+    register: plugin_remove
+    ignore_errors: True
+    with_items: "{{ es.plugins }}"
+  - name: Install ElasticSearch plugins
+    shell: "yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install -s {{ item }}"
+    with_items: "{{ es.plugins }}"
+  when:
+    - es.plugins is defined
+    - es.plugins|length > 0
+- block: # Kibana Plugins
+  - name: Remove Kibana plugins
+    shell: "/usr/share/kibana/bin/kibana-plugin remove {{ item }}"
+    ignore_errors: True
+    with_items: "{{ kibana.plugins }}"
+  - name: Install Kibana plugins
+    shell: "/usr/share/kibana/bin/kibana-plugin install {{ item }}"
+    with_items: "{{ kibana.plugins }}"
+  when:
+    - kibana.plugins is defined
+    - kibana.plugins|length > 0
+- name: Start ElasticSearch and Kibana
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - "elasticsearch"
+    - "kibana"
+
+- name: Wait until node join the cluster
+  uri:
+    # May be need replace ansible_fqdn to ansible_hostname below
+    url: "https://elastic.eoadm.com/_nodes/{{ ansible_fqdn }}/host"
+    method: GET
+    user: "{{ es.user }}"
+    password: "{{ es.password }}"
+    return_content: yes
+  register: nodes_info
+  until: "(nodes_info.json | json_query('nodes.*.name | [0]')) == ansible_fqdn"
+  retries: 30
+  delay: 10
+- name: Start cluster allocation
+  uri:
+    url: "https://elastic.eoadm.com/_cluster/settings"
+    method: PUT
+    body_format: json
+    body: |
+      {
+        "transient": {
+          "cluster.routing.allocation.enable": "all"
+        }
+      }
+    user: "{{ es.user }}"
+    password: "{{ es.password }}"
+  when: update is defined and update

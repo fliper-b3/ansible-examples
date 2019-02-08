@@ -1,0 +1,8 @@
+#!/bin/sh
+
+ip link set "$INTERFACE" up
+{% for host in tinc_hosts if host.name == ansible_hostname %}
+ip addr add {{ host.tun_ip }}/{{ tun_prefix }} dev "$INTERFACE"
+{% endfor %}
+
+source /etc/tinc/ibit/tinc-up.local

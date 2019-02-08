@@ -1,0 +1,13 @@
+---
+- hosts: all
+  roles:
+    - role: ssh-add
+  vars_prompt:
+    - name: "USER"
+      prompt: "Remote username"
+      default: "eo"
+      private: no
+    - name: "KEYUSER"
+      prompt: "User's ssh keys list"
+      default: ""
+      private: no

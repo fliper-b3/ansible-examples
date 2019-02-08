@@ -1,0 +1,26 @@
+# RPM Packages
+- block:
+  - name: Install IUS reposiotry
+    yum:
+      name: "https://centos{{ ansible_distribution_major_version }}.iuscommunity.org/ius-release.rpm"
+      state: present
+  
+  - name: Install python
+    yum:
+      name: "python36u,python36u-devel,curl-devel,mariadb-devel"
+      state: latest
+  when: ansible_pkg_mgr == "yum"
+
+# User section
+- block:
+  - name: "Get home directory for user '{{ USER }}'"
+    shell: "echo $HOME"
+    register: home
+  
+  - name: "Create venv at {{ home.stdout }}"
+    shell: "python3.6 -m venv {{ home.stdout }}/.venv/3.6"
+  
+  become: yes
+  become_user: "{{ USER }}"
+  become_method: sudo
+  become_flags: "-i"

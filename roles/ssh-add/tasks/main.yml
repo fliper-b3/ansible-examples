@@ -1,0 +1,12 @@
+- name: Requested packages install
+  yum:
+    name: "libselinux-python"
+    state: latest
+- name: "Add user '{{ USER }}'"
+  user:
+    name: "{{ USER }}"
+- name: "Add public ssh key for '{{ USER }}'"
+  authorized_key:
+    key: "{{ lookup('file', 'ssh-keys/' + KEYUSER + '.pub') }}"
+    user: "{{ USER }}"
+    state: present

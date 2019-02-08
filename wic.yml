@@ -1,0 +1,4 @@
+---
+- hosts: wic.eoadm.com
+  roles:
+    - role: wic

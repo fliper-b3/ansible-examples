@@ -1,0 +1,8 @@
+# Public ip
+Address = {{ item.address }}
+
+# Own virtual ip
+Subnet = {{ item.tun_ip }}/32
+
+# RSA 4096 length key 
+{% include "files/keys/" + item.name + "/pub" %}

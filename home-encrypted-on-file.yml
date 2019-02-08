@@ -1,0 +1,4 @@
+---
+- hosts: all
+  roles:
+    - role: home-encrypted-on-file

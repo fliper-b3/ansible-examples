@@ -1,0 +1,217 @@
+# RHEL block
+- block:
+  - name: Find serverscom .repo files
+    find:
+      paths: /etc/yum.repos.d
+      patterns: "*.repo"
+    register: repoconf_to_delete
+  - name: Remove servers.com config shit
+    file:
+      path: "{{ item }}"
+      state: absent
+    vars:
+      config_to_delete:
+        - "/etc/openldap/ldap.conf"
+        - "/etc/libuser.conf"
+        - "/etc/sysconfig/authconfig"
+    with_items: "{{ (repoconf_to_delete | json_query('files[*].path')) + config_to_delete }}"
+  - name: Clear repositories cache
+    file:
+      path: "/var/cache/yum"
+      state: absent
+  - name: ReInstall CentOS original repositories
+    command: "rpm -U --force http://mirror.centos.org/centos-7/7.6.1810/os/x86_64/Packages/centos-release-7-6.1810.2.el7.centos.x86_64.rpm"
+    args:
+      warn: no
+  - name: ReInstall original rpms
+    command: "yum reinstall libuser openldap crontabs authconfig iputils -y"
+    args:
+      warn: no
+  - name: Remove epel-release repo
+    yum:
+      name: "epel-release"
+      state: absent
+  - name: Install additional repository packages
+    yum:
+      name: "epel-release"
+      state: latest
+    register: pre
+  - name: Remove unnecessary packages
+    yum:
+      name: >
+        kexec-tools,NetworkManager*,tuned,avahi*,firewall*,polkit*,gssproxy,
+        abrt*,libstoragemgmt,kpatch,quota,ntpdate,wpa_supplicant,cloud-init
+      state: absent
+  - name: Install most useful tools
+    yum:
+      name: >
+        libselinux-python,tmux,mc,bind-utils,telnet,pigz,lsof,vim,iptables-services,bridge-utils,
+        htop,sysstat,openssl-devel,zlib-devel,sqlite-devel,bzip2,tree,deltarpm,
+        pv,rsync,lnav,mosh,acpid,httpie,iotop,ngrep,net-tools,nano
+      state: latest
+    when: pre.rc == 0
+  - name: Clean unnecessary dependences
+    command: "yum autoremove -y"
+    args:
+      warn: no
+  - name: Disable selinux
+    selinux:
+      policy: targeted
+      state: permissive
+  - name: Leave only 2 kernel versions
+    lineinfile:
+      dest: /etc/yum.conf
+      regexp: "^installonly_limit"
+      line: "installonly_limit=2"
+  - name: Upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+  - name: Install iptables rules
+    copy:
+      src: "etc/sysconfig/iptables"
+      dest: "/etc/sysconfig/iptables"
+    tags:
+      - firewall
+  - name: Activate iptables
+    service:
+      name: iptables
+      state: restarted
+      enabled: yes
+    tags:
+      - firewall
+  - name: Install ip6tables rules
+    copy:
+      src: "etc/sysconfig/ip6tables"
+      dest: "/etc/sysconfig/ip6tables"
+    tags:
+      - firewall
+  - name: Activate ip6tables
+    service:
+      name: ip6tables
+      state: restarted
+      enabled: yes
+    tags:
+      - firewall
+  when: ansible_pkg_mgr == "yum"
+  tags:
+    - yum
+  
+# Ubuntu, Debian block
+- block:
+  - name: Remove unnecessary packages
+    apt:
+     name: "fuse,lxd,snapd,open-iscsi"
+     state: absent
+  - name: Install most useful tools
+    apt:
+      name: "tmux,mc,dnsutils,telnet,pigz,lsof,vim,iptables-persistent,bridge-utils,htop,aptitude,gawk,libsqlite3-dev,deltarpm"
+      state: latest
+  - name: Clean unnecessary dependences
+    command: "apt-get autoremove -y"
+    args:
+      warn: no
+  - name: Upgrade all packages
+    apt:
+      upgrade: full
+  - name: Install iptables rules
+    copy:
+      src: "etc/iptables/rules.v4"
+      dest: "/etc/iptables/rules.v4"
+    tags:
+      - firewall
+  - name: Install ip6tables rules
+    copy:
+      src: "etc/iptables/rules.v6"
+      dest: "/etc/iptables/rules.v6"
+    tags:
+      - firewall
+  - name: Activate iptables
+    service:
+      name: netfilter-persistent
+      state: restarted
+      enabled: yes
+    tags:
+      - firewall
+  when: ansible_pkg_mgr == "apt"
+  tags:
+    - apt
+
+# Config
+- name: Set timezone to UTC
+  timezone:
+    name: UTC
+- name: Add root SSH keys
+  authorized_key:
+    user: root
+    state: present
+    key: "{{ item.key }} {{ item.name }}"
+  with_items:
+    - name: "icecream"
+      key: "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEA1u9N7A0e+vmgSm7SjO089e+xuVEsH5eFI5rjBMkpTVO7hx3aeToMJMoyrO7DkR8GN8c8jcpFHTkMnvq1/wnnHL65YpdCeZxXh4aavLxXgU19XglGMT9aXOONxKak4ZVYzJ1uyKP6pMp3qKNVEVc6h4tmizDNRtZ7fa2wnHxHdMxtO7SWKLg1ylzlKHXMtT96U/Bd5hZa7FaUpBdQNe76HAXW8Ixf3BtpsIykakLHMQ/QDtTr5i5XBNIF00NgsGzJkj63/xnmE2el7eRviZDX3KntO/RDiY4ewP7mNqJF4NFUauBk7T3RtB9cV/LKyS0ttE05MfWdObqXmQor1JqppQ=="
+    - name: "iavguston"
+      key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC5ceKOVKFrG3z0vCvtXd/mNrpI7zEup8ZZwMJ7KniUDexznEXkaTRwQkTPTdQRk4IbxwIN06cnKyybbBKwkwnSm5OitJOU4EHM+ujfDZEM7op0M9EiDMg3/IN2Buu0bfYVCikDix1haA7sfqdU4vlV+HhkBjPbfQNeo5J8eObGFuzt+nkQWKqKgIsQ0DQ/60U1Xz0yVjdOGVTU7u3P3K+h4vvnddk4e289r29/pfMWn2Qhx+hdF3CCFZ5/1wDTdTaKdm38qUS2SMMxJNGu8xHdgF22u/bQ0+WTrLu2Cvs2yGdB/cLjqWdlYH4YzW+KUEXefdxn1mx5QfP2US8CLa//"
+
+# Systemd section
+- block:
+  - name: Install zram-config service (systemd)
+    copy:
+      src: "etc/systemd/system/zram-config.service"
+      dest: "/etc/systemd/system/zram-config.service"
+  - name: Reload systemd
+    command: "systemctl daemon-reload"
+    register: reloaded
+  when: ansible_service_mgr == "systemd"
+
+# Upstart section
+- block:
+  - name: Install zram-config service (upstart)
+    copy:
+      src: "etc/init/zram-config.conf"
+      dest: "/etc/init/zram-config.conf"
+  when: ansible_service_mgr == "upstart"
+
+# Start services
+- name: Start zram-config
+  service:
+    name: zram-config
+    state: started
+    enabled: yes
+
+# Other settings
+- name: VIM settings
+  copy:
+    src: "root/.vimrc"
+    dest: "/root/.vimrc"
+
+- name: htop settings
+  copy:
+    src: "root/.config/htop/"
+    dest: "/root/.config/htop/"
+
+- name: Add sudoer's root users
+  lineinfile:
+    path: "/etc/sudoers.d/root"
+    create: yes
+    mode: 0440
+    owner: root
+    group: root
+    line: "{{ item }}          ALL=(ALL)       NOPASSWD: ALL"
+  with_items:
+    - mbratchikov
+
+- name: Copy SSL certs and keys
+  synchronize:
+    src: "etc/pki/tls/"
+    dest: "/etc/pki/tls/"
+
+- name: Cron job to generate Diffie-Hellman Parameter file weekly
+  cron:
+    name: "Generate Diffie-Hellman Parameter file"
+    special_time: "weekly"
+    job: "/usr/bin/openssl dhparam -out /etc/pki/tls/misc/dhparam.pem 4096 >/dev/null 2>&1"
+
+- name: Generate random password for root
+  user:
+    name: root
+    password: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"

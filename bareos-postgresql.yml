@@ -1,0 +1,5 @@
+# Установит postgresql10 и настроит базу для bareos-dir 
+---
+- hosts: all
+  roles:
+    - role: bareos-postgresql

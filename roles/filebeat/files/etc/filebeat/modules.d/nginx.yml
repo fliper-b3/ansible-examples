@@ -1,0 +1,5 @@
+- module: nginx
+  access-custom:
+    var.paths: ["/var/log/nginx/*access.log"]
+  error-extend:
+    var.paths: ["/var/log/nginx/*error.log"]

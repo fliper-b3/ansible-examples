@@ -1,0 +1,6 @@
+@daily C=update-mmdb.sh; $HOME/.local/bin/$C >>log/cron/$C.log 2>&1
+1 * * * *     C=update_eo_currency_rate; pgrep -f "manage.py $C" >/dev/null || $HOME/.venv/eofinance_app/bin/python $HOME/app/eofinance_app/manage.py $C --force=1 >> $HOME/log/cron/$C.log 2>&1
+* * * * *     C=withdrawal_balances_update; pgrep -f "manage.py $C" >/dev/null || $HOME/.venv/eofinance_app/bin/python $HOME/app/eofinance_app/manage.py $C >> $HOME/log/cron/$C.log 2>&1
+1 */12 * * *     C=crypto_aggregator_general; pgrep -f "manage.py $C" >/dev/null || $HOME/.venv/eofinance_app/bin/python $HOME/app/eofinance_app/manage.py $C >> $HOME/log/cron/$C.log 2>&1
+* * * * *     C=crypto_aggregator_general_alarm; pgrep -f "manage.py $C" >/dev/null || $HOME/.venv/eofinance_app/bin/python $HOME/app/eofinance_app/manage.py $C >> $HOME/log/cron/$C.log 2>&1
+@daily find /home/eo/log -type f -mtime +6 -delete >/dev/null 2>&1

@@ -1,0 +1,91 @@
+- name: Install tinc package
+  package:
+    name: tinc
+    state: latest
+- name: Create configuration directory
+  file:
+    path: "/etc/tinc/{{ netname }}/hosts"
+    state: directory
+- name: Alien hosts configurations
+  template:
+    src: "etc/tinc/{{ netname }}/alien_host"
+    dest: "/etc/tinc/{{ netname }}/hosts/{{ item.name }}"
+  with_items: "{{ alien_hosts }}"
+- name: Mesh hosts configurations
+  template:
+    src: "etc/tinc/{{ netname }}/mesh_host"
+    dest: "/etc/tinc/{{ netname }}/hosts/{{ item.name }}"
+  with_items: "{{ mesh_hosts }}"
+- name: Tinc main config file
+  template:
+    src: "etc/tinc/{{ netname }}/tinc.conf"
+    dest: "/etc/tinc/{{ netname }}/tinc.conf"
+- name: Tinc scripts
+  template:
+    src: "etc/tinc/{{ netname }}/{{ item }}"
+    dest: "/etc/tinc/{{ netname }}/{{ item }}"
+    mode: "0755"
+  with_items:
+    - "tinc-up"
+    - "tinc-down"
+- name: Copy private key to host
+  copy:
+    src: "keys/{{ ansible_hostname }}/priv"
+    dest: "/etc/tinc/{{ netname }}/rsa_key.priv"
+    mode: "0600"
+- name: Create local configs
+  file:
+    path: "/etc/tinc/{{ netname }}/{{ item }}"
+    state: touch
+  with_items:
+    - "tinc-up.local"
+    - "tinc-down.local"
+- block:
+  - name: Open firewall for external ip
+    iptables:
+      action: insert
+      chain: INPUT
+      ctstate: NEW
+      destination_port: 655
+      protocol: "{{ item[0] }}"
+      source: "{{ item[1].address }}"
+      jump: ACCEPT
+    with_nested:
+      - [ "udp", "tcp" ]
+      - "{{ tinc_hosts | json_query('[].{ name: name, address: address }') }}"
+  - block:
+    - name: Firewall virtual ip masquerading
+      iptables:
+        table: nat
+        chain: POSTROUTING
+        source: "172.17.0.0/16"
+        destination: "10.176.0.0/16"
+        jump: MASQUERADE
+    - name: Firewall forwarding subnet rules
+      iptables:
+        action: insert
+        chain: FORWARD
+        ctstate: NEW
+        source: "{{ item[0].src }}"
+        destination: "{{ item[1].dest }}"
+        jump: ACCEPT
+      with_nested:
+        - "{{ alien_hosts | json_query('[].{ name: name, src: tun_ip, acl: acl }') }}"
+        - "{{ mesh_subnets | json_query('[].{ name: name, dest: net }') }}"
+      when: "item[1].name in acls[item[0].acl]"
+    - name: Firewall forwarding common rules
+      iptables:
+        action: insert
+        chain: FORWARD
+        ctstate: [ "ESTABLISHED", "RELATED" ]
+        jump: ACCEPT
+    when: "ansible_hostname in ( mesh_hosts | map(attribute='name') | list )"
+  when: "firewall is defined and firewall"
+- name: Start tinc daemon
+  service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  with_items:
+    - "tinc"
+    - "tinc@{{ netname }}"

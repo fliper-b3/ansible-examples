@@ -1,0 +1,4 @@
+ip ro del 10.176.0.0/16 dev "$INTERFACE"
+# cp + rm rather than mv in case it's a symlink
+cp /etc/resolv.conf.tincsave /etc/resolv.conf
+rm -f /etc/resolv.conf.tincsave

@@ -1,0 +1,75 @@
+- name: Requested packages install
+  yum:
+    name: "libselinux-python,cryptsetup"
+    state: latest
+
+- name: Check if encrypted loop device file exist
+  stat:
+    path: "{{ loop_dev_file_path }}"
+    get_checksum: false
+    get_md5: false
+  register: loop_dev_file
+
+- name: Fail if loop device file too small
+  fail:
+    msg: "Loop device file < 1G"
+  when: loop_dev_file.stat.exists and loop_dev_file.stat.size < 1024*1024*1024
+
+- name: Create encrypted loop device file
+  command: "truncate -s {{ loop_dev_file_size }} {{ loop_dev_file_path }}"
+  when: not loop_dev_file.stat.exists
+
+- name: Check if loop device file is LUKS encrypted
+  command: "cryptsetup isLuks {{ loop_dev_file_path }}"
+  failed_when: false
+  register: is_LUKS
+  changed_when: false
+  tags:
+    - cryptsetup
+
+- name: Create encrypted LUKS device on file
+  shell: "echo {{ luks_pass }} | cryptsetup luksFormat --key-file - {{ loop_dev_file_path }}"
+  when: is_LUKS.rc != 0
+  tags:
+    - cryptsetup
+
+- name: Check if encrypted loop device is open
+  command: "cryptsetup status {{ opened_device_name }}"
+  failed_when: false
+  register: is_LUKS_open
+  changed_when: false
+  tags:
+    - cryptsetup
+
+- name: Open (decrypt) encrypted LUKS device
+  shell: "echo {{ luks_pass }} | cryptsetup luksOpen --key-file - {{ loop_dev_file_path }} {{ opened_device_name }}"
+  when: is_LUKS_open.rc != 0
+  tags:
+    - cryptsetup
+
+- name: Format opened block device (if not yet)
+  filesystem:
+    fstype: xfs
+    dev: "/dev/mapper/{{ opened_device_name }}"
+  tags:
+    - filesystem
+
+- name: Check if /home already mounted
+  command: "mountpoint -q /home"
+  failed_when: false
+  register: is_home_mounted
+  changed_when: false
+  tags:
+    - mount
+
+- name: Mount decrypted device to /home
+  command: "mount /dev/mapper/{{ opened_device_name }} /home"
+  args:
+    warn: False
+  when: is_home_mounted.rc != 0
+  tags:
+    - mount
+
+- name: Set global that home encrypted now
+  set_fact:
+    home_encrypted: True

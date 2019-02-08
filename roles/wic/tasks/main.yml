@@ -1,0 +1,8 @@
+- name: Remove production directory
+  win_file:
+    path: C:\Users\wic\Work\beta\nw\buildProduction
+    state: absent
+- name: Run batch file
+  win_command: 'C:\Users\wic\Work\beta\run.cmd'
+  args: 
+    chdir: C:\Users\wic\Work\beta

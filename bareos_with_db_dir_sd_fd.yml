@@ -1,0 +1,13 @@
+---
+- hosts: all
+  roles:
+    - role: bareos-postgresql
+    - role: bareos-dir
+    - role: bareos-sd
+  
+  vars:
+    bareos_dbhost: "127.0.0.1"
+    bareos_dbpasswd: "hbhbV6XUHJ57w8jr"
+    bareos_sd_dir_address: "backup.eoadm.com"
+    bareos_dir_password: "ETAtUudtX2x34ZrdDcdP5MQb9XvX6Me7VBKX8MRJqCBwFwqQkzefUd9hBbdM"
+    bareos_sd_password: "4mk5yXVqvqWHM8wQZKDayq7K48gG48e4zBvMGDpqGWAawUaTSKGv5wz2GwKn"

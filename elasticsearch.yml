@@ -1,0 +1,25 @@
+---
+- hosts: all
+  roles:
+    - role: elasticsearch
+  remote_user: root
+  vars:
+    es:
+      user: "elastic"
+      password: "ImHabUgtydtetic5"
+      plugins:
+        #- "x-pack"
+        - "ingest-geoip"
+        - "ingest-user-agent"
+    kibana:
+      #plugins:
+      #  - "x-pack"
+  vars_prompt:
+    - name: "update"
+      prompt: "Update only?"
+      default: true
+      private: no
+    - name: "version"
+      prompt: "Which version shall I upgrade to? Default latest"
+      default: latest
+      private: no

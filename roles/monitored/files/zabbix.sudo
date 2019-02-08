@@ -1,0 +1,6 @@
+Defaults:zabbix !requiretty
+Cmnd_Alias      SMARTCTL = /usr/sbin/smartctl
+Cmnd_Alias      INXI = /bin/inxi
+Cmnd_Alias      LVS = /sbin/lvs
+Cmnd_Alias      DU = /bin/du
+zabbix          ALL=(root)      NOPASSWD: SMARTCTL, INXI, LVS, DU

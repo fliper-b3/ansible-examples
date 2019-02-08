@@ -1,0 +1,9 @@
+---
+- hosts: all
+  roles:
+    - role: prepare-server
+      when: ansible_pkg_mgr == "yum"
+    - role: web-node-nginx
+    - role: home-encrypted-on-file
+    - role: expert-user
+    - role: node-per-user

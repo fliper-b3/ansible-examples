@@ -1,0 +1,26 @@
+- name: Install ElastiSearch repository
+  copy:
+    src: "etc/yum.repos.d/elasticsearch.repo"
+    dest: "/etc/yum.repos.d/elasticsearch.repo"
+- name: Install filebeat package
+  package:
+    name: filebeat
+    state: latest
+- name: Filebeat config
+  synchronize:
+    src: "etc/filebeat/"
+    dest: "/etc/filebeat/"
+    archive: no
+    recursive: yes
+    delete: yes
+- name: Plugin files
+  synchronize:
+    src: "usr/share/filebeat/module/"
+    dest: "/usr/share/filebeat/module/"
+    archive: no
+    recursive: yes
+- name: Filebeat service
+  service:
+    name: filebeat
+    state: restarted
+    enabled: yes

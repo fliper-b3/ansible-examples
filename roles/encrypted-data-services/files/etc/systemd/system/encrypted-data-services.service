@@ -1,0 +1,14 @@
+[Unit]
+Description=Stop services and umount encrypted volumes
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target kexec.target
+
+[Install]
+WantedBy=shutdown.target
+
+[Service]
+Environment='HOME=/root'
+Type=oneshot
+ExecStart=/bin/true
+ExecStop=/root/bin/encrypted-data-services.sh stop
+RemainAfterExit=yes

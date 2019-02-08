@@ -1,0 +1,214 @@
+- block:
+  - name: Install PostgreSQL repo
+    command: "rpm -U --force https://download.postgresql.org/pub/repos/yum/10/redhat/rhel-7-x86_64/pgdg-centos10-10-2.noarch.rpm"
+    args:
+      warn: no
+  - name: Install neccessary RPMs
+    yum:
+      name: "postgresql10-server,redis,squid,postgresql10-devel,dnsmasq,bash-completion"
+      state: latest
+  - name: Fix alternatives for pg binaries
+    shell: "update-alternatives --install /usr/bin/pg_config pgsql-pg_config /usr/pgsql-10/bin/pg_config 1000"
+  - name: Check if db directory exists
+    stat:
+      path: "/var/lib/pgsql/10/data/base"
+    register: dbdir
+  - name: Init PostgreSQL DB
+    shell: "/usr/pgsql-10/bin/postgresql-10-setup initdb"
+    when: dbdir.stat.exists == false
+  - name: Copy PostgreSQL config files
+    copy:
+      src: "var/lib/pgsql/10/data/{{ item }}"
+      dest: "/var/lib/pgsql/10/data/{{ item }}"
+    with_items:
+      - "postgresql.conf"
+      - "pg_hba.conf"
+  - name: Create backup directory
+    file:
+      name: "/var/backup/pgsql"
+      state: directory
+      owner: postgres
+      group: postgres
+  - name: Copy SQL dump
+    synchronize:
+      src: "var/backup/pgsql/"
+      dest: "/var/backup/pgsql/"
+      archive: no
+      recursive: yes
+    tags:
+      - "sql-dump"
+  - name: "Add sudoers to {{ USER }} may restore SQL"
+    lineinfile:
+      path: "/etc/sudoers.d/postgres"
+      create: yes
+      mode: 0440
+      owner: root
+      group: root
+      line: "eo          ALL=(postgres)       NOPASSWD: /usr/bin/psql -f /var/backup/pgsql/{{ item }}"
+    with_items:
+      - "pg_killall.sql"
+      - "pg_dumpall.sql"
+      - "pg_fixes.sql"
+      - "pg_ico_fill.sql"
+    tags:
+      - "sql-dump"
+  - name: Restart PostgreSQL
+    service:
+      name: "postgresql-10"
+      state: restarted
+      enabled: yes
+  tags:
+    - pgsql
+- block:
+  - name: "Add NGINX to {{ USER }} group"
+    user:
+      name: "nginx"
+      groups:
+        - "{{ USER }}"
+  - name: NGINX common config
+    synchronize:
+      src: "etc/nginx/"
+      dest: "/etc/nginx/"
+      archive: no
+      recursive: yes
+      delete: yes
+  - name: NGINX per host config
+    template:
+      src: "etc/nginx/vhosts.d/{{ item }}"
+      dest: "/etc/nginx/vhosts.d/{{ item }}"
+    with_items:
+      - "hostname.conf"
+  - name: Set NGINX config owner:group to root
+    file:
+      path: "/etc/nginx"
+      owner: root
+      group: root
+      recurse: yes
+  - name: Check NGINX config
+    command: "nginx -t"
+    register: nginx_conf_test
+  - name: Reload NGINX
+    service:
+      name: nginx
+      state: reloaded
+      enabled: yes
+    when: nginx_conf_test.rc == 0
+  tags:
+    - nginx
+- name: "Modify {{ USER }} home dir permissions"
+  file:
+    name: "/home/{{ USER }}"
+    mode: 0755
+    state: directory
+- name: Copy config files
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - src: "etc/redis.conf"
+      dest: "/etc/redis.conf"
+- name: "Add {{ USER }} ssh private key"
+  copy:
+    src: "HOME/.ssh/id_rsa"
+    dest: "/home/{{ USER }}/.ssh/id_rsa"
+    mode: 0600
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+  tags:
+    - ssh-config
+- name: "Add {{ USER }} ssh public key and config"
+  copy:
+    src: "HOME/.ssh/{{ item }}"
+    dest: "/home/{{ USER }}/.ssh/{{ item }}"
+    mode: 0644
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+  with_items:
+    - "id_rsa.pub"
+    - "config"
+  tags:
+    - ssh-config
+- name: "Create cron log directory for {{ USER }}"
+  file:
+    name: "/home/{{ USER }}/cron/log"
+    state: directory
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+  tags:
+    - "crontab"
+- name: "Install crontab for {{ USER }}"
+  copy:
+    src: "HOME/crontab"
+    dest: "/var/spool/cron/{{ USER }}"
+    mode: 0600
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+  tags:
+    - "crontab"
+- name: "Shell actions for user {{ USER }}"
+  shell: "{{ item }}"
+  with_items:
+    - "PATH=~/.local/bin:$PATH pm2 install pm2-logrotate"
+    - "PATH=~/.local/bin:$PATH pm2 set pm2-logrotate:max_size 200M"
+    - "PATH=~/.local/bin:$PATH pm2 set pm2-logrotate:retain 7"
+  tags:
+    - user-actions
+  become: yes
+  become_user: "{{ USER }}"
+- name: Modify /etc/hosts
+  template:
+    src: "etc/hosts"
+    dest: "/etc/hosts"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  tags:
+    - /etc/hosts
+- name: Add Maxmind DB update script
+  copy:
+    src: "HOME/.local/bin/update-mmdb.sh"
+    dest: "/home/{{ USER }}/.local/bin/update-mmdb.sh"
+    mode: 0755
+- name: "Add developer's public ssh key for '{{ USER }}'"
+  authorized_key:
+    key: "{{ lookup('file', '../../../roles/ssh-add/files/ssh-keys/' + item + '.pub') }}"
+    user: "{{ USER }}"
+    state: present
+  with_items:
+    - jenkins
+    - go
+    - aatavin
+    - lnasedkin
+- name: Start services
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - "redis"
+    - "postgresql-10"
+    - "squid"
+    - "nginx"
+    - "dnsmasq"
+
+- block:
+  - name: Setup openvpn
+    package:
+      name: openvpn
+      state: present
+  - name: Copy dev-env.ovpn and dev-env.conf to /etc/openvpn
+    template: 
+      src: files/etc/openvpn/{{ item }}
+      dest: /etc/openvpn/{{ item }}
+      owner: root
+    with_items:
+      - client/dev-env.ovpn
+      - server/dev-env-server.conf
+  - name: Restart openvpn
+    service:
+      name: openvpn-server@dev-env-server
+      state: restarted
+      enabled: yes
+  tags: 
+  - openvpn
+  

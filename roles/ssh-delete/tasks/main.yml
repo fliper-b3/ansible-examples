@@ -1,0 +1,29 @@
+## Писать коменты по каждому шагу бесполезно тут
+## Мы находим в файле /etc/passwd всех пользователей
+## У которых есть shell (bash | sh ) и забираем path 
+## Домашней директории. 
+## Прогоняем регулярку где переменная publickey публичный
+## Ключ, который мы хотим отключить, соответственно 
+## Подменяем строку на закоментированную строку
+## На всякий случай делаем бэкап файла authorized_key
+- name: Get all users from /etc/passwd on host with homedir
+  shell: grep -E "/bin/bash|/bin/sh" /etc/passwd  | cut -d ':' -f 6
+  register: user_homedir
+
+- name: Registation all authorized_keys files
+  stat:
+    path: "{{ item }}/.ssh/authorized_keys"
+  register: auth_key_file
+  with_items: 
+  - "{{ user_homedir.stdout_lines }}"
+
+- name: Hide key 
+  replace:
+    path: "{{ item[0].item }}/.ssh/authorized_keys"
+    regexp: '^(.*{{ item[1] | replace("/","\/") | replace("+","\+") }}.*)$'
+    replace: '### \1'
+    backup: no # Сохранить резервную копию файла authorized_keys
+  when: item[0].stat.exists # True если у найденного пользователя есть файл authorized_keys
+  with_nested: # https://docs.ansible.com/ansible/2.4/playbooks_loops.html#nested-loops
+  - "{{ auth_key_file.results }}" # Пройди по всему файлу authorized_kes
+  - "{{ publickeys }}"            # и выпили все ключи, что стоят в переменной publickeys

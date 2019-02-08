@@ -1,0 +1,14 @@
+---
+- hosts: all
+  roles:
+    - role: useradd
+    - role: python-venv
+  vars_prompt:
+    - name: "USER"
+      prompt: "User?"
+      default: expert
+      private: no
+    - name: "add_ssh_keys"
+      prompt: "Add ssh keys? (jenkins, go)"
+      default: No
+      private: no

@@ -1,0 +1,5 @@
+---
+- hosts: all
+  roles:
+    - role: tinc
+  remote_user: root

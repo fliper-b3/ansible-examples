@@ -1,0 +1,25 @@
+access_log  /var/log/nginx/wapi-access.log advanced;
+error_log   /var/log/nginx/wapi-error.log;
+
+location    / {
+    expires off;
+    proxy_pass http://r01sg-wapi;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Port $server_port;
+}
+location /flog/ {
+    allow 10.0.0.0/8;
+    allow 213.133.88.121;
+    allow 81.4.145.214;
+    allow 185.106.142.64/28;
+    deny all;
+    proxy_pass http://r01sg-flog;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Port $server_port;
+}

@@ -1,0 +1,5 @@
+loop_dev_file_path: "/.home"
+loop_dev_file_size: "10G"
+home_encrypted: false
+luks_pass: "{{ lookup('password', '/tmp/encrypted-home-password/{{ inventory_hostname }}') }}"
+opened_device_name: "home"

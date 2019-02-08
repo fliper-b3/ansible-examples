@@ -1,0 +1,17 @@
+---
+- hosts: all
+  roles:
+    - { role: monitored, become: yes }
+  vars_prompt:
+    - name: "server"
+      prompt: "Zabbix server IP"
+      default: "10.176.2.228"
+      private: no
+    - name: "hw"
+      prompt: "Hardware type <VM|HW|Cloud>"
+      default: "VM"
+      private: no
+    - name: "region"
+      prompt: "System locatin <NL|SG|US|CY|HK>"
+      default: "NL"
+      private: no

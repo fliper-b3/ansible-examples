@@ -1,0 +1,39 @@
+---
+- name: Insert template for new client to bareos-dir
+  template:
+    src: "files/template_for_new_client.conf"
+    dest: "/etc/bareos/bareos-dir.d/client/{{ client_name }}.conf"
+  register: need_restarted
+
+- name: Insert template job for new client to bareos-dir
+  template:
+    src: "files/template_job_for_new_client.conf"
+    dest: "/etc/bareos/bareos-dir.d/job/{{ client_name }}.conf"
+  register: need_restarted
+
+- name: Insert template fileset for new client to bareos-dir
+  template:
+    src: "files/template_fileset_for_new_client.conf"
+    dest: "/etc/bareos/bareos-dir.d/fileset/{{ client_name }}.conf"
+  register: need_restarted
+  when: file_set is defined and file_set != "" and file_set != []
+  
+- name: Insert template schedule for new client to bareos-dir
+  template:
+    src: "files/template_schedule_for_new_client.conf"
+    dest: "/etc/bareos/bareos-dir.d/schedule/{{ client_name }}.conf"
+  register: need_restarted
+  when: schedule is defined and schedule != "" and schedule != {}
+   
+- name: Insert template pool for new client to bareos-dir
+  template:
+    src: "files/template_pool_for_new_client.conf"
+    dest: "/etc/bareos/bareos-dir.d/pool/{{ client_name }}.conf"
+  register: need_restarted
+  when: pool_days_store is defined 
+
+- name: Restart bareos-dir 
+  service:
+    name: bareos-dir
+    state: restarted
+  when: need_restarted.changed == true

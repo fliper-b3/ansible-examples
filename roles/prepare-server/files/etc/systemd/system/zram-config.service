@@ -1,0 +1,17 @@
+[Unit]
+Description=Compressed swap in memory using zram
+After=multi-user.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment="N=4"
+ExecStart=/bin/bash -c "modprobe -q zram num_devices=${N};\
+    m=$(awk '/MemTotal/ {print $2/'${N}'*512}' /proc/meminfo);\
+    echo $m | tee /sys/block/zram*/disksize >/dev/null;\
+    for z in /dev/zram* ; do mkswap $z ; done;\
+    swapon -p 100 /dev/zram*"
+ExecStop=/bin/bash -c "swapoff /dev/zram* && sleep 1 && rmmod zram"
+
+[Install]
+WantedBy=multi-user.target

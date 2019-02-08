@@ -1,0 +1,175 @@
+netname: "ibit"
+tun_prefix: 16
+tinc_hosts:
+  - name: "web01in"
+    address: "139.59.72.70"
+    tun_ip: "172.17.96.165"
+    alien: True
+    acl: "web_nodes"
+  - name: "web02in"
+    address: "139.59.83.76"
+    tun_ip: "172.17.83.76"
+    alien: True
+    acl: "web_nodes"
+
+  - name: "web01us"
+    address: "142.0.202.60"
+    tun_ip: "172.17.202.60"
+  - name: "web02us"
+    address: "142.0.193.124"
+    tun_ip: "172.17.193.124"
+  - name: "web01nl"
+    address: "213.196.50.52"
+    tun_ip: "172.17.50.52"
+  - name: "web02nl"
+    address: "213.196.50.60"
+    tun_ip: "172.17.50.60"
+  - name: "web01sg"
+    address: "203.195.120.212"
+    tun_ip: "172.17.120.212"
+  - name: "web02sg"
+    address: "203.195.120.76"
+    tun_ip: "172.17.120.76"
+alien_hosts: "{{ tinc_hosts | json_query('[?alien == `true`]') }}"
+mesh_hosts: "{{ tinc_hosts | json_query('[?alien != `true`]') }}"
+
+acls:
+  web_nodes:
+    - "web01nl"
+    - "web02nl"
+    - "web01sg"
+    - "web02sg"
+    - "web01us"
+    - "web02us"
+    - "vpn"
+    - "static"
+    - "app01lu"
+    - "app02lu"
+    - "wic"
+    - "transman"
+    - "app"
+    - "app02sg"
+    - "app03sg"
+    - "app04sg"
+    - "r01sg"
+    - "web01hk"
+    - "backup"
+    - "app01nl"
+    - "app02nl"
+    - "npmjs"
+
+mesh_subnets:
+  # Tinc's edge own network
+  - name: "web01nl"
+    net: "10.176.1.80/29"
+    prio:
+      web01nl: 2
+      web02nl: 4
+  - name: "web02nl"
+    net: "10.176.0.96/29"
+    prio:
+      web02nl: 2
+      web01nl: 4
+  - name: "web01sg"
+    net: "10.176.0.32/29"
+    prio:
+      web01sg: 2
+      web02sg: 4
+  - name: "web02sg"
+    net: "10.176.2.48/29"
+    prio:
+      web02sg: 2
+      web01sg: 4
+  - name: "web01us"
+    net: "10.176.2.88/29"
+    prio:
+      web01us: 2
+      web02us: 4
+  - name: "web02us"
+    net: "10.176.3.192/29"
+    prio:
+      web02us: 2
+      web01us: 4
+  # NL Edge
+  - name: "vpn"
+    net: "10.176.3.126"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  - name: "static"
+    net: "10.176.2.221"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  - name: "app01lu"
+    net: "10.176.2.172"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  - name: "app02lu"
+    net: "10.176.0.116"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  - name: "wic"
+    net: "10.176.2.239"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  - name: "transman"
+    net: "10.176.2.241"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  - name: "app01nl"
+    net: "10.176.1.212"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  - name: "app02nl"
+    net: "10.176.2.36"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  - name: "npmjs"
+    net: "10.176.2.207"
+    prio:
+      web01nl: 6
+      web02nl: 8
+  # SG Edge
+  - name: "app"
+    net: "10.176.1.132"
+    prio:
+      web01sg: 6
+      web02sg: 8
+  - name: "app02sg"
+    net: "10.176.1.28"
+    prio:
+      web01sg: 6
+      web02sg: 8
+  - name: "app03sg"
+    net: "10.176.3.100"
+    prio:
+      web01sg: 6
+      web02sg: 8
+  - name: "app04sg"
+    net: "10.176.1.204"
+    prio:
+      web01sg: 6
+      web02sg: 8
+  - name: "r01sg"
+    net: "10.176.0.188"
+    prio:
+      web01sg: 6
+      web02sg: 8
+  - name: "web01hk"
+    net: "10.176.0.133"
+    prio:
+      web01sg: 6
+      web02sg: 8
+  # US Edge
+  - name: "backup"
+    net: "10.176.0.233"
+    prio:
+      web01us: 6
+      web02us: 8

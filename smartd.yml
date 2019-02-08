@@ -1,0 +1,5 @@
+---
+- hosts: all
+  roles:
+    - role: smartd
+  remote_user: root

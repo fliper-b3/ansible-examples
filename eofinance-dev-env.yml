@@ -1,0 +1,17 @@
+---
+- hosts: all
+  roles:
+    - role: prepare-server
+    - role: useradd
+    - role: python-venv
+    - role: nginx-and-user-cache
+    - role: node-per-user
+    - role: eofinance-dev-env
+  remote_user: root
+  vars_prompt:
+  - name: "USER"
+    prompt: "User name"
+    default: "eo"
+    private: no
+  vars:
+    add_ssh_keys: yes

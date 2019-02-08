@@ -1,0 +1,37 @@
+---
+- include: centos.yml
+  when: ansible_distribution == "CentOS"
+  
+- include: ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
+
+- name: Install bareos-sd
+  package: 
+    name: bareos-sd
+    state: present
+   
+- name: Setup config bareos-sd
+  template:
+    src: files/bareos-sd.d/{{ item }}
+    dest: /etc/bareos/bareos-sd.d/{{ item }}
+    owner: bareos
+    group: bareos
+    mode: '0600'
+    force: yes
+  with_items:
+    - 'device/FileStorage.conf'
+    - 'director/bareos-dir.conf'
+    - 'director/bareos-mon.conf'
+    - 'messages/Standard.conf'
+    - 'storage/bareos-sd.conf'
+
+- name: Run bareos-sd
+  service:
+    name: bareos-sd
+    state: started
+    enabled: yes
+
+- name: Restart if config chanched
+  service:
+    name: bareos-sd
+    state: restarted

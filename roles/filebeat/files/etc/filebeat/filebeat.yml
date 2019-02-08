@@ -1,0 +1,16 @@
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+output.elasticsearch:
+  hosts:
+    - "web01us.eoadm.com"
+    - "web02us.eoadm.com"
+    - "web01sg.eoadm.com"
+    - "web02sg.eoadm.com"
+    - "web01nl.eoadm.com"
+    - "web02nl.eoadm.com"
+    - "web01us.eoadm.com"
+    - "web02us.eoadm.com"
+  username: "filebeat"
+  password: "FanFiwefHerEabs1"
+  bulk_max_size: 500

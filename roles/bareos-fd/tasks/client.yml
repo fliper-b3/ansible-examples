@@ -1,0 +1,77 @@
+---
+- include: centos.yml
+  when: ansible_distribution == "CentOS"
+
+- include: macos.yml
+  when: ansible_distribution == "MacOS"
+  
+- include: windows.yml
+  when: ansible_distribution == "Windows"
+  
+- name: Install bareos-fd
+  package: 
+    name: bareos-fd
+    state: present
+
+- name: Copy config file
+  template:
+    src: "files/{{ item }}"
+    dest: "/etc/bareos/bareos-fd.d/{{ item }}"
+  with_items:
+    - "client/myself.conf"
+    - "director/bareos-dir.conf"
+    - "messages/Standard.conf" 
+  register: was_changed
+
+- name: Start bareos-fd
+  service:
+    name: bareos-fd
+    state: started
+
+- name: Insert script "run_script_before" for new client to bareos-dir
+  template:
+    src: "files/scripts/{{ run_script_before }}"
+    dest: "/usr/sbin/{{ run_script_before }}"
+    mode: '0550'
+    owner: root
+    group: root
+  when: run_script_before is defined and run_script_before != "" and run_script_before != {}
+    
+- name: Restart bareos-fd if config have been changed
+  service:
+    name: bareos-fd
+    state: restarted
+  when: was_changed.changed == true
+
+- name: Check firewalld is installed and runing
+  command: "systemctl status firewalld"
+  register: firewalld_is_run
+  ignore_errors: yes                     # for host in client1 client2 client3; DO
+  when: ansible_service_mgr == "systemd"
+
+- name: Check iptables is installed and runing
+  command: "systemctl status iptables"
+  register: iptables_is_run
+  ignore_errors: yes                     # for host in client1 client2 client3; DO
+  when: ansible_service_mgr == "systemd"
+  
+- name: Firewall open ports 9102 tcp 
+  firewalld:
+   port: 9102/tcp
+   permanent: true
+   state: enabled
+   zone: public
+   immediate: yes
+  when: firewalld_is_run.rc == 0
+
+- name: Iptables open ports 9102 tcp # Работает через жопу потому что ставит правило последним в цепочке INPUT да плохо это открывать порт всем нужен source: backup.server.com 
+  iptables:
+   chain: INPUT
+   ctstate: NEW
+   destination_port: 9102
+   protocol: tcp
+   match: tcp
+   jump: ACCEPT
+  become: yes
+  when: iptables_is_run.rc == 0
+  

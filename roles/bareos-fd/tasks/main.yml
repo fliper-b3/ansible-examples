@@ -1,0 +1,21 @@
+---
+- name: Check bareos-dir was installed   # Важная проверка, если мы запускаем ansible-playbook -i backup-client, backup-server, bareos-fd.yml
+  command: "systemctl status bareos-dir" # То как раз так мы выясним где сейчас идет таска на клиенте или сервере. Если клиентов сразу и много
+  register: dir_check                    # Нужно запускать playbook script'ом
+  ignore_errors: yes                     # for host in client1 client2 client3; DO
+                                         #     ansible-playbook -i client1, backup-server, bareos-fd.yml \
+                                         #               --extra-vars "client_address=client1 \
+                                         #                             client_name=/как то надо положить в цикл имя/" \
+                                         #                             client_name=/как то надо положить в цикл пароль/" \
+                                         # DONE              
+
+
+- include: client.yml     # Это код вoзврата с ПК на котором не установлен bareos-dir. Tехнический   
+  when: dir_check.rc == 4 # долг получить значение переменной dir_check с ПК где нет systemctl
+
+- include: server.yml # Коды возрата команды systemctl status bareos-dir когда сервис запущен и когда сервис 
+  when: dir_check.rc == 0 or dir_check.rc == 3 # остановлен по той или иной причине, но присутвует на ПК
+  
+
+
+   

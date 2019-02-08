@@ -1,0 +1,8 @@
+---
+- name: Add repository bareos 17.x
+  template:
+    src: files/centos7.repo
+    dest: /etc/yum.repos.d/bareos.repo
+    mode: '0644'
+    owner: root
+    group: root

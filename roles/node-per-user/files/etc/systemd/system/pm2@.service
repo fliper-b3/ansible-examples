@@ -1,0 +1,19 @@
+[Unit]
+Description=PM2 next gen process manager for Node.js
+After=network.target remote-fs.target
+
+[Service]
+Type=forking
+User=%i
+Environment="PATH=/home/%i/.local/bin:/usr/bin"
+
+ExecStartPre=/usr/bin/env pm2 kill
+ExecStart=/usr/bin/env pm2 resurrect
+ExecReload=/usr/bin/env pm2 reload all
+
+ExecStop=/usr/bin/env pm2 dump
+ExecStop=/usr/bin/env pm2 delete all
+ExecStop=/usr/bin/env pm2 kill
+
+[Install]
+WantedBy=multi-user.target

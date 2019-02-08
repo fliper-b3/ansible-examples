@@ -1,0 +1,112 @@
+- name: Install epel-release
+  package:
+    name: epel-release
+    state: present
+  when: ansible_pkg_mgr == "yum"
+  tags:
+    - repo
+    
+- name: Install ansible pre-requests RPM
+  package:
+    name: "libselinux-python"
+    state: latest
+  when: ansible_pkg_mgr == "yum"
+  tags:
+    - pre
+
+- block:
+    - name: Install latest YUM zabbix repo release
+      yum:
+        name: "https://repo.zabbix.com/zabbix/4.1/rhel/{{ ansible_distribution_major_version }}/x86_64/zabbix-release-4.1-1.el{{ ansible_distribution_major_version }}.noarch.rpm"
+        state: present
+    - name: Clean YUM cache
+      command: "yum clean all"
+      args:
+        warn: no
+  when: ansible_pkg_mgr == "yum"
+  tags:
+    - repo
+
+- block:
+    - name: Install latest APT zabbix repo release
+      apt:
+        deb: "http://repo.zabbix.com/zabbix/4.1/{{ ansible_distribution | lower }}/pool/main/z/zabbix-release/zabbix-release_4.1-1+{{ ansible_distribution_release }}_all.deb"
+        state: present
+    - name: Update APT cache
+      apt:
+        update_cache: yes
+  when: ansible_pkg_mgr == "apt"
+  tags:
+    - repo
+
+- name: Install various utils
+  package:
+    name: "inxi"
+    state: latest
+  tags:
+    - util
+
+- name: Install zabbix-agent
+  package:
+    name: "zabbix-agent,zabbix-sender,zabbix-get"
+    state: latest
+
+- name: Install zabbix-agent config
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - src: "zabbix_agentd.conf"
+      dest: "/etc/zabbix/zabbix_agentd.conf"
+    - src: "zabbix_agentd.psk"
+      dest: "/etc/zabbix/zabbix_agentd.psk" 
+  tags:
+    - config
+
+- name: "Copy files to zabbix-agent conf dir"
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - src: "system.backup.discovery.json"
+      dest: "/etc/zabbix/zabbix_agentd.d/system.backup.discovery.json"
+  tags:
+    - config
+
+- name: "Create zabbix home directory"
+  file:
+    path: "/var/lib/zabbix"
+    state: directory
+    owner: zabbix
+    group: zabbix
+
+- name: Install sudoers file
+  copy:
+    src: zabbix.sudo
+    dest: /etc/sudoers.d/zabbix
+    mode: 0440
+  tags:
+    - sudo
+
+- name: Start zabbix-agent
+  service:
+    name: "zabbix-agent"
+    state: restarted
+    enabled: yes
+  tags:
+    - service
+
+- name: Include smartd configuration
+  include_role:
+    name: smartd
+
+- name: Disable hardware specified services on Virtual Machines
+  service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  with_items:
+    - lm_sensors
+    - fancontrol
+    - smartd
+  when: ansible_virtualization_role == "guest" and ansible_pkg_mgr == "yum"

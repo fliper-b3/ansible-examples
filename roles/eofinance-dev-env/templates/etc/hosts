@@ -1,0 +1,5 @@
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+{{ ansible_eth1.ipv4.address if (ansible_eth1 is defined ) else ansible_eth0.ipv4.address }} eo.finance verify.eo.finance app.eo.finance ws.eo.finance crm.eo.finance dev-app.eo.finance dev.eo.finance dev-ws.eo.finance dev-verify.eo.finance dev-crm.eo.finance dev-desktop.eo.finance
+{{ ansible_eth1.ipv4.address if (ansible_eth1 is defined ) else ansible_eth0.ipv4.address }} eo.trade dev.eo.trade app.eo.trade dev-app.eo.trade mocks.eo.trade dev-mocks.eo.trade

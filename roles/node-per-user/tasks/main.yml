@@ -1,0 +1,107 @@
+- name: Requested packages install (RPM)
+  yum:
+    name: "google-roboto-fonts,libselinux-python,cairo-devel,cairomm-devel,libjpeg-turbo-devel,pango-devel,pangomm-devel,giflib-devel,xz,libpng12-devel"
+    state: latest
+- name: Install build tools
+  yum:
+    name: "@Development tools"
+    state: latest
+
+- name: Get NODEJS download index
+  uri:
+    url: "https://nodejs.org/dist/index.json"
+    return_content: yes
+  register: dlindex
+
+- name: "Parse latest LTS \"{{ LTS }}\" version "
+  vars:
+    first_lts_item: "[?lts=='{{ LTS }}'].version | [0]"
+  set_fact:
+    nodejs_version: "{{ dlindex.json | json_query(first_lts_item) }}"
+
+- name: "Set filename for {{ nodejs_version }}"
+  set_fact:
+    nodejs_archive: "node-{{ nodejs_version }}-linux-x64.tar.xz"
+
+- name: "Get sha256sum list for {{ nodejs_version }}"
+  get_url:
+    url: "https://nodejs.org/dist/{{ nodejs_version }}/SHASUMS256.txt"
+    dest: "/tmp/SHASUMS256.txt"
+    force: yes
+
+- name: "Parse sha256sum for {{ nodejs_archive }}"
+  command: "awk '{if ($2 == \"{{ nodejs_archive }}\") { print $1 }}' /tmp/SHASUMS256.txt"
+  register: nodejs_arch_sha256
+
+- name: "Get latest LTS \"{{ LTS }}\" {{ nodejs_version }}"
+  get_url:
+    url: "https://nodejs.org/dist/{{ nodejs_version }}/{{ nodejs_archive }}"
+    dest: "/tmp/{{ nodejs_archive }}"
+    checksum: "sha256:{{ nodejs_arch_sha256.stdout }}"
+
+# User section
+- block:
+  - block:
+    - name: "Get home directory for user '{{ USER }}'"
+      shell: "echo $HOME"
+      register: home
+
+    - name: User npm config
+      copy:
+        src: "npmrc"
+        dest: "{{ home.stdout }}/.npmrc"
+    - name: Create .local/bin directory
+      file:
+        path: "{{ home.stdout }}/.local/bin"
+        mode: 0755
+        state: directory
+    - name: Set PATH to ~/.bash_profile
+      lineinfile:
+        name: "{{ home.stdout }}/.bash_profile"
+        line: 'PATH="$HOME/.local/bin:$HOME/bin:$PATH"'
+        regexp: 'PATH='
+        create: yes
+    tags:
+      - npmrc
+  - block:
+    - name: "Unpack NODEJS archive to ~/.local/bin"
+      shell: "tar -xJf /tmp/{{ nodejs_archive }} --wildcards --strip-components=1 -C ~/.local 'node*'/{bin,lib,share}"
+      args:
+        warn: no
+    - name: Remove installed node modules
+      npm:
+        name: "{{ item }}"
+        global: True
+        state: absent
+      with_items:  "{{ packages }}"
+    - name: Install node modules
+      npm:
+        name: "{{ item }}"
+        global: True
+        state: latest
+        production: yes
+      with_items: "{{ packages }}"
+    vars:
+      packages:
+        - "yarn"
+        - "pm2"
+    tags:
+      - node_packages
+  become: yes
+  become_user: "{{ USER }}"
+  become_method: sudo
+  become_flags: "-i"
+
+# Install pm2 service for systemd
+- block:
+  - name: Install pm2 service file
+    copy:
+      src: "etc/systemd/system/pm2@.service"
+      dest: "/etc/systemd/system/pm2@.service"
+  when: ansible_service_mgr == "systemd"
+
+- name: Start pm2 service for user
+  service:
+    name: "pm2@{{ USER }}"
+    state: started
+    enabled: yes

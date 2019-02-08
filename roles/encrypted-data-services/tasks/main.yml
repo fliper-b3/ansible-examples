@@ -1,0 +1,40 @@
+- name: Install most useful tools
+  package:
+    name: "tmux,mc,bind-utils,telnet,pigz,lsof,vim,iptables-services,bridge-utils,htop,sysstat,openssl-devel,zlib-devel,sqlite-devel,bzip2"
+    state: latest
+
+# File copy section
+- name: Add script and message to encrypted partition
+  copy:
+    src: "root/"
+    dest: "/root/"
+- name: Add exec attr to enable encrypted data script
+  file:
+    path: "/root/bin/encrypted-data-services.sh"
+    mode: 0755
+- name: Add message to bash_profile
+  lineinfile:
+    path: /root/.bash_profile
+    line: 'source ~/.profile'
+
+# Systemd section
+- block:
+  - name: Install encrypted-data-services (systemd)
+    copy:
+      src: "etc/systemd/system/encrypted-data-services.service"
+      dest: "/etc/systemd/system/encrypted-data-services.service"
+  - name: Disable ProtectHome for chronyd (enable rm/mv of /home)
+    copy:
+      src: "etc/systemd/system/chronyd.service.d"
+      dest: "/etc/systemd/system/"
+  - name: Reload systemd
+    command: "systemctl daemon-reload"
+    register: reloaded
+  when: ansible_service_mgr == "systemd"
+
+# Start services
+- name: Start encrypted-data-services
+  service:
+    name: encrypted-data-services
+    state: started
+    enabled: yes

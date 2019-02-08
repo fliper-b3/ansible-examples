@@ -1,0 +1,7 @@
+---
+- hosts: all
+  roles:
+    - role: prepare-server
+    - role: node-per-user
+    - role: nginx-and-user-cache
+    - role: web-node-nginx

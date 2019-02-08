@@ -1,0 +1,14 @@
+# Public ip
+Address = {{ item.address }}
+
+# Own virtual ip
+Subnet = {{ item.tun_ip }}/32
+{% for subnet in mesh_subnets %}
+# {{ subnet.name }}
+Subnet = {{ subnet.net }}#{{ subnet.prio[item.name] | default(10) }}
+{% endfor %}
+# All private network
+Subnet = 10.176.0.0/16#20
+
+# RSA 4096 length key 
+{% include "files/keys/" + item.name + "/pub" %}

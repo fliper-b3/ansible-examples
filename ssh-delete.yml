@@ -1,0 +1,14 @@
+---
+- hosts: all
+  roles:
+    - role: ssh-delete
+  remote_user: root
+  vars:
+     ## Ключ может быть в любом формате, например
+     ## ssh-rsa <public key>, ssh-rsa <public key> username, <public key>
+     ## Последний вариант предпочтительнее всего, т.к. грохнит наверняка
+     publickeys: 
+     - "AAAAB3NzaC1yc2EAAAADAQABAAABAQC0/r79cmMeGMZZinHLGX+tyS6hr6AziIabA5UvAv0cx0+Y2DzfnW0NyLOXRsDpquixpRS7GcwbM93+dSXJ8O8Z1nHu7EaxiKLJ6ofaQ4EYQykolNN3alOZM8FQX3ZsP9nYhO5yMsr/oEU8ekIr0eiIkROUkIlIZ7I5u/AmGNUFHa52xkooKEAhd3PC7hSgpFjnTGIt5/r9bliDrM6tkXB1F1qN8k78/Lgmv6L47rkUFXHT34s1pIdYk6bqHRe2SdQaYA4CT0sydzMvHOO/ou3OTsdNMsFFQPI5gb6wTdAYU41UsuxSsq2MO7Tw9md6H1kaO8M/eF3iSjBLJcH8CeS7"
+     - "AAAAB3NzaC1yc2EAAAADAQABAAABAQDLtuXBCJqOetjusCFVDKV9ng43PwHwV30VwGVenHObIW7TruO9oiii4zuumi+Ir+kNjR7iM37z0wjafxLHHCFQ9LdIMojezF500PfaiRqSAzg/VHhf5uXGsARHQINPa9h7f/E7jX5Q5u7ZGKAo3zFJpkIHG4IKuF+IXVefxU6uJkxSq5BvIwQw9S82F73PpiZ9gN9QPNtSuzEdndji8azDD0OI2IfeISBa4iUuGX5qaXnjNJ1PRDfkvLKHf3hwV+OBvJwPBi5t3XzKLVUzVLnjUjzIRkLkIm3+F7HuXGZjTTFNjjXyi8f+xZKD4wDlgkCdDjctdT1XmRGMX3Uc4o2V"
+     - "AAAAB3NzaC1yc2EAAAADAQABAAABAQCnUJcETXJIjHTDfPodHwDae5UrEZxVPzTVaRzr+wMPNIZV7D54QIxm3wT9L4QigD49o8QCwreDHOn9TBaehV/f8gDCBT+PbqQfBtKm7GmDkUmyHlI/T+vx+NKQ7ELnBz41fJNV0H2sJx16nrBK1iYmOqCIH0PJYdmS2v+4eJvRehQIvEZkVAUQ3vFumC8ImilPgdysfviB4XLEJ+Mcw5e+kyMYOygAqYD0XpuN92nVoZbWl5j6oZhHJJ0tm2zvkaBeh6SLJq3s47ado740B0LffCQmIoTK1lK4YD2C8DwOtPdArwfkansKwab0Mb7T57UW/yuufc77iPEjHUxW/3GR"
+     - "AAAAB3NzaC1yc2EAAAADAQABAAABAQCUuPJ6rCf1PGaSC8ZR0Tz+pGIyVCUgpjOugGG9JzNtap6GwdioUpvMyJYlJLzyRDzQ8x4P5yZi2zftzkOpqUmRXuOXcS/zsX9qMg7Nd5toSaxWKN21jszDrvM+G6tqnhLimpRWmQ/4kjH357mnKPSwj8YlyppWq7lzgld/EeEsHppr6jjFVQsY6r9NFQYKDpHDYlEPC1mmek1HZuOYHkBfaI+hU2ZBlr8LAoyas3fRF5wMhlFCFCnzo3zCQ+8n0C7oO9m15Dwn/eIr1fy+CUG2HEUz4tIlFgaaUSgAcPskz85Vre097DNQ+xIstrBH7gl608To+h+lAdeMU+tc1aln"

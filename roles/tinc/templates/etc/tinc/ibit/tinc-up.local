@@ -1,0 +1,13 @@
+ip ro add 10.176.0.0/16 dev "$INTERFACE"
+
+# Preserve the existing resolv.conf
+if [ -e /etc/resolv.conf ] ; then
+  cp /etc/resolv.conf /etc/resolv.conf.tincsave
+fi
+cat <<EOF > /etc/resolv.conf
+nameserver 10.176.3.126
+nameserver 10.176.0.233
+nameserver 10.176.3.100
+EOF
+chmod 644 /etc/resolv.conf
+

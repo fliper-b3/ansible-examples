@@ -1,0 +1,7 @@
+---
+- hosts: all
+  roles:
+    - role: bareos-sd
+  vars:
+    bareos_sd_dir_address: "192.168.56.15"
+    bareos_sd_password: "4mk5yXVqvqWHM8wQZKDayq7K48gG48e4zBvMGDpqGWAawUaTSKGv5wz2GwKn"

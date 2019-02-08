@@ -1,0 +1,68 @@
+---
+## Роль предназначена для установки на клиетах
+## Запускать ansible-playbook -i client_IP/hosname, bareos-dir_IP/hostname, bareos-fd.yml
+## Тогда таска сама добавит нового клиента на сервер bareos-dir с дефолтноми значениями бэкапа
+## Дефолтный значения бэкапа смотреть на сервере
+## Необходимо выставить значения переменных для каждого клиента, имя и пароль
+################################################################################################
+## Если клиент не поддерживает ansible, например Windows, MacOS и etc 
+## то можно запускать ansible-playbook -i bareos-dir_IP/hostname, bareos-fd.yml
+## с переменными пароль, адрес, имя клиента аналогичными на клиенте
+## это добават клиента на сервер
+################################################################################################
+## Если клиентов сразу и много нужно запускать playbook script'ом
+## for HOST in client1 client2 client3; do 
+##     ansible-playbook -i ${HOST}, backup-server, bareos-fd.yml \
+##               --extra-vars "client_address=client1 \
+##                             client_name=/как то надо положить в цикл имя/ \
+##                             client_password=/как то надо положить в цикл пароль/" \
+##                             ...
+################################################################################################
+- hosts: all
+  roles:
+    - role: bareos-fd
+
+  vars:
+  ## Описание переменных
+  ## Обязательные переменные:
+  ##    - client_address адрес клиента IP/hostname 
+  ##    - client_name имя клиента, то как его будет видеть bareos
+  ##    - client_password пароль с которым будет его аутифицировать bareoas-dir
+  ## Переменные необязательные но очень желательные:
+  ##    - job практически не нужна, если вы знаете, что такое bareos, то этой переменной вы можете поменять любой параметр для Job
+  ##          подробности http://doc.bareos.org/master/html/bareos-manual-main-reference.html#x1-1360009.2
+  ##          default_value_from_default_job = NONE
+  ##    - file_set массив абсолютных путей до папок и файлов котые нужно бэкапить ["/var/backup", "/home"]
+  ##               default_value_from_default_job = ["/"] Exclude ["/var/lib/bareos", "/var/lib/bareos/storage", "/proc", "/tmp", "/var/tmp", "/.journal", "/.fsck"] 
+  ##    - pool_days_store число типа int! Сколько дней хранить бэкап. 
+  ##                      Подробности http://doc.bareos.org/master/html/bareos-manual-main-reference.html#directiveDirPoolVolume%20Retention
+  ##                      default_value_from_default_job = 365
+  ##    - run_script_before перед началом бэкапа bareos может выполнить скрипт на клиенте, дождаться его выполнения и если exit 0 сделать бэкап
+  ##                        скрипт должен лежать в roles/bareos-fd/files/scripts имя скрипта значение переменной run_script_before
+  ##                        на клиенте bareos положит скрипт в /usr/sbin/{{ run_script_before }} права 0550 
+  ##                        скрипт не поддерживает аргументы...
+  ##                        default_value_from_default_job = NONE
+  ##    - scheduler расписание когда делать бэкап. Вы можете задать как все три типа для бэкапа так и каждый в отдельности
+  ##                Подробности синтаксиса http://doc.bareos.org/master/html/bareos-manual-main-reference.html#x1-1380009.4
+  ##                default_value_from_default_job = Full sat at 21:00 
+  #### Cовет! Лучше не затирать значения переменных, а кидать их в комент и делать для каждого клиента новые https://media1.tenor.com/images/b06111ca4f61490fe7dc535e0250d603/tenor.gif?itemid=7713620
+    client_address: "electron.eoadm.com"
+    client_name: "electron"
+    client_password: "qNhgCZq5DmZMyrZwBeJG4q35bbWfEXesMbHcT27WMzF68xcFUTtz4E" 
+    #job: ["Key = \"Value\"",]
+    file_set: ["/var/lib/pgsql/10/backups"]
+    pool_days_store: 7
+    run_script_before: "backup_postgress.sh"
+    schedule: 
+      Full: "at 23:00"
+      #Full: "sat at 21:00"
+      #Differential: "2nd-5th sat at 21:00"
+      #Incremental: "mon-fri at 21:00"
+  
+    # client_address: "minio.eoadm.com"
+    # client_name: "minio"
+    # client_password: "fMwv86QbB8H4sAaDu9mnhp52GADthRBaYPVZGMch6wR6M54B" 
+    # file_set: ["/home/minio/data"]
+    # pool_days_store: 7
+    # schedule: 
+    #   Full: "at 23:00"

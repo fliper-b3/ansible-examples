@@ -1,0 +1,27 @@
+- name: Install smartmontools package
+  package:
+    name: smartmontools
+    state: latest
+- name: Update smartd config
+  copy:
+    src: "etc/smartmontools/{{ item }}"
+    dest: "/etc/smartmontools/{{ item }}"
+  with_items:
+    - smartd.conf
+- name: Create exec scripts directory
+  file: 
+    path: "/usr/libexec/smartmontools"
+    recurse: yes
+    state: directory
+- name: Install exec scripts
+  copy:
+    src: "usr/libexec/smartmontools/{{ item }}"
+    dest: "/usr/libexec/smartmontools/{{ item }}"
+    mode: 0755
+  with_items:
+    - update-status.sh
+- name: S.M.A.R.T service
+  service:
+    name: smartd
+    state: restarted
+    enabled: yes

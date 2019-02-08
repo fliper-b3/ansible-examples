@@ -1,0 +1,158 @@
+---
+- include: centos.yml
+  when: ansible_distribution == "CentOS"
+  
+- include: ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
+
+- name: Install bareos-dir
+  package: 
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - bareos-dir
+    - bareos-fd
+    - bareos-database-postgresql
+  
+- name: Setup config bareos-dir.conf
+  template:
+    src: "files/bareos-dir.d/{{ item }}"
+    dest: "/etc/bareos/bareos-dir.d/{{ item }}"
+    owner: bareos
+    group: bareos
+    mode: '0640'
+    force: yes
+  with_items:
+    - 'catalog/MyCatalog.conf'
+    - 'client/bareos-fd.conf'
+    - 'console/bareos-mon.conf'
+    - 'director/bareos-dir.conf'
+    - 'fileset/Catalog.conf'
+    - 'fileset/LinuxAll.conf'
+    - 'fileset/SelfTest.conf'
+    - 'fileset/Windows All Drives.conf'
+    - 'job/backup-bareos-fd.conf'
+    - 'job/BackupCatalog.conf'
+    - 'job/RestoreFiles.conf'
+    - 'jobdefs/DefaultJob.conf'
+    - 'messages/Daemon.conf'
+    - 'messages/Standard.conf'
+    - 'pool/Full.conf'
+    - 'pool/Incremental.conf'
+    - 'pool/Differential.conf'
+    - 'pool/Scratch.conf'
+    - 'profile/operator.conf'
+    - 'schedule/WeeklyCycle.conf'
+    - 'schedule/WeeklyCycleAfterBackup.conf'
+    - 'storage/File.conf'
+  register: was_changed_dir
+
+- name: Setup config bareos-fd.conf
+  template:
+    src: "files/bareos-fd.d/{{ item }}"
+    dest: "/etc/bareos/bareos-fd.d/{{ item }}"
+    owner: bareos
+    group: bareos
+    mode: '0640'
+    force: yes
+  with_items:
+    - client/myself.conf
+    - director/bareos-dir.conf
+    - messages/Standard.conf
+  register: was_changed_fd
+  
+- name: Add user postgres to group bareos for read config file (get db connection info)
+  user:
+    name: postgres
+    group: bareos
+
+# На сервер bareos не уставлен postgresql-10. Нужно поставить таска работает только с localhost
+# Server postgresql-10 did not install on the host with bareos-dir. 
+# Please install. This task will be work only with localhost database server
+- name: Check if db not setup   # Если postgre не установлен это упадет с ошибкой
+  command: "ls /var/lib/pgsql/10/data" # и все остановится и надо ставить postgre
+  
+- name: Check initialization database bareos
+  become_method: sudo
+  become: yes
+  become_user: postgres
+  command: '/usr/bin/psql -d bareos -c "\dt"'
+  register: check_res
+
+- name: Initialization tables in database bareos
+  become_method: sudo
+  become: yes
+  become_user: postgres
+  command: "/usr/lib/bareos/scripts/make_bareos_tables"
+  when: check_res.stdout == ""
+
+- name: Grant permitions for user bareos
+  become_method: sudo
+  become: yes
+  become_user: postgres
+  command: "/usr/lib/bareos/scripts/grant_bareos_privileges"
+
+- name: Start bareos-dir bareos-fd
+  service:
+    name: "{{ item }}"
+    state: started
+  with_items:
+    - "bareos-dir"
+    - "bareos-fd"
+
+- name: Restart bareos-dir
+  service:
+    name: bareos-dir
+    state: restarted
+    enabled: yes
+  when: was_changed_dir.changed == true
+
+- name: Restart bareos-fd
+  service:
+    name: bareos-fd
+    state: restarted
+    enabled: yes
+  when: was_changed_fd.changed == true
+
+- name: Check firewalld is installed and runing
+  command: "systemctl status firewalld"
+  register: firewalld_is_run
+  ignore_errors: yes                     # for host in client1 client2 client3; DO
+  when: ansible_service_mgr == "systemd"
+
+- name: Check iptables is installed and runing
+  command: "systemctl status iptables"
+  register: iptables_is_run
+  ignore_errors: yes                     # for host in client1 client2 client3; DO
+  when: ansible_service_mgr == "systemd"
+  
+- name: Firewall open ports 9101 and 9103 tcp 
+  firewalld:
+   port: "{{ item }}"
+   permanent: true
+   state: enabled
+   immediate: yes
+  with_items:
+    - "9101/tcp"
+    - "9103/tcp"
+  when: firewalld_is_run.rc == 0
+  
+- name: Iptables open ports 9101 and 9103 tcp 
+  iptables:
+   action: insert
+   rule_num: 5
+   chain: INPUT
+   ctstate: NEW
+   destination_port: "{{ item }}"
+   protocol: tcp
+   match: tcp
+   jump: ACCEPT
+  become: yes
+  with_items:
+    - "9101"
+    - "9103"
+  when: iptables_is_run.rc == 0
+  
+- name: Save iptables rules for bareos
+  command: service iptables save
+  when: iptables_is_run.rc == 0

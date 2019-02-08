@@ -1,0 +1,60 @@
+---
+- include: centos.yml
+  when: ansible_distribution == "CentOS"
+  
+- include: ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
+
+- name: Install postgresql10
+  package: 
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - postgresql10
+    - postgresql10-server
+    - postgresql10-devel
+    - python-psycopg2
+    - postgresql-libs
+
+- name: Check initization db
+  command: "ls /var/lib/pgsql/10/data"
+  register: result
+
+- name: Init database server
+  command: "/usr/pgsql-10/bin/postgresql-10-setup initdb"
+  when: result.stdout == "" and result.stderr == ""
+  
+- name: Add permitions for user bareos to pg_hba.conf
+  template:
+    src: "files/pg_hba.conf"
+    dest: "/var/lib/pgsql/10/data/pg_hba.conf"
+    force: yes
+  
+- name: Run postgresql-10
+  service:
+    name: postgresql-10
+    state: started
+    enabled: yes
+  
+- name: Create bareos database
+  become: true
+  become_user: postgres
+  postgresql_db: 
+    name: bareos
+    encoding: 'SQL_ASCII'
+    template: template0
+    lc_collate: 'en_US.UTF-8'
+    lc_ctype: 'en_US.UTF-8'
+    state: present
+  retries: 30
+  delay: 10 
+  
+
+- name: Create bareos user for database bareos
+  become: true
+  become_user: postgres
+  postgresql_user: 
+    db: bareos
+    name: bareos
+    password: "hbhbV6XUHJ57w8jr"
+    priv: ALL

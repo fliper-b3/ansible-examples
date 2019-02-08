@@ -1,0 +1,1 @@
+RANDOMHASH: "{{ inventory_hostname | hash('sha256') }}"

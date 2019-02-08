@@ -1,0 +1,18 @@
+- name: Requested packages install
+  yum:
+    name: "libselinux-python"
+    state: latest
+
+- name: "Add user `{{ USER }}`"
+  user:
+    name: "{{ USER }}"
+
+- name: "Add ssh keys to `{{ USER }}` user"
+  authorized_key:
+    key: "{{ item }}"
+    user: "{{ USER }}"
+    state: present
+  with_items:
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCdf4+bRUeFnzSwdPWphlFheXUX/cq8ANKO3xobyvg7L8sRTcactEVhGmmnnouup2GcBy4XK7gP2hVc46KlAFAWkvo5+mxCz7+ATWJp/HT377bpaYh/yP+x9pvarHReW1G0xX5EKBDT9zSY9yyzbGCVyLjx4Plc5aX2IaqfJNsMGYHLf3KtUKQAK5Zf4exPJJc27qyqpiwNBlnHNJK++KzLi3ymdUJD86By2wU0a5aqYUq3GUDKoLh+oO8CM5nnwo7HFGVBHxZlGfEXGSSXpJqOmgdlotXETCuI1b4WCCKtgUKiUuUFjz0cJEvrk6UOZvX0t3XdTXTfN9RfMbDyLfHR jenkins@jenkins.eoadm.com"
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDZyK5sgT5AoW/aNFvP6Q0NL/t5lknWVirC+sl2iFCaqVZQ7pZkA5fCB7b/yHHpm8UuGZb314uIxF7Hks7S41P4FaNUA+LZnI351DGyZmz4qsrU4B8Rtx2Ftwg8S/Ztq9XZE8aTTwWhbIZVXWzwmtDalvl16eU8qA1RgV0UQ2s/LwQMSzH+nbpaHgHNhue80mdwyLmd7JVIm+7Rmj0wUzF7t4Zv9nmG2MC1rZVdS1dDQzK0MiknyaO1SQSBnOmuXVy+glY5YnNyHf2u8OYn9zbNjNbnSCg42t05IlsbD/A9TJJZu2y+0OZn3tznOk/twfrlQ74qTtNB1pNhitsfY8Uz expert@expert-go"
+  when: add_ssh_keys

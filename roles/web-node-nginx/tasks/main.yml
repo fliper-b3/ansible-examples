@@ -1,0 +1,39 @@
+- name: Set logrotate file
+  copy:
+    src: "etc/logrotate.d/nginx"
+    dest: "/etc/logrotate.d/nginx"
+  tags:
+    - nginx
+    - nginx-config
+- name: Copy NGINX config files
+  synchronize:
+    src: "etc/nginx/"
+    dest: "/etc/nginx/"
+    delete: yes
+  tags:
+    - nginx
+    - nginx-config
+- name: Set NGINX config owner:group to root
+  file:
+    path: "/etc/nginx"
+    owner: root
+    group: root
+    recurse: yes
+  tags:
+    - nginx
+    - nginx-config
+- name: Check NGINX config
+  command: "nginx -t"
+  register: nginx_conf_test
+  tags:
+    - nginx
+    - nginx-config-test
+- name: Reload NGINX
+  service:
+    name: nginx
+    state: reloaded
+    enabled: yes
+  when: nginx_conf_test.rc == 0
+  tags:
+    - nginx
+    - nginx-reload
